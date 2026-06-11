@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 from core.atomic_io import atomic_write_json as _atomic_write_json  # noqa: E402
 
 DEFAULT_PRIVILEGES = {
-    "can_use_agent": True,
-    "can_use_browser": True,
+    "can_use_agent": False,
+    "can_use_browser": False,
     "can_use_bash": False,
-    "can_use_documents": True,
-    "can_use_research": True,
-    "can_generate_images": True,
-    "can_manage_memory": True,
+    "can_use_documents": False,
+    "can_use_research": False,
+    "can_generate_images": False,
+    "can_manage_memory": False,
     "max_messages_per_day": 0,
     "allowed_models": [],
     "allowed_models_restricted": False,
