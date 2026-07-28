@@ -27,7 +27,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 #   cd ~/egos && sh /caminho/do/leaf/hooks/install.sh
 # lia o kit do LEAF e o instalava no KERNEL — e, sendo `ln -sf`, sobrescrevia o slot sem
 # perguntar. Aconteceu comigo às 21:58 de 27/07: o `.husky/_/pre-commit` do kernel virou um
-# symlink para o kit da lagoinha, e os ~40 gates do kernel sumiram de uma vez. Levou um
+# symlink para o kit de um leaf, e os ~40 gates do kernel sumiram de uma vez. Levou um
 # `git hook run` para aparecer, porque nada reclamou.
 #
 # A leitura errada era plausível demais para depender de disciplina de quem digita. Agora o
@@ -126,7 +126,7 @@ if [ -n "$EXISTENTE" ] && [ -e "$EXISTENTE" ]; then
 #
 # ── SEM CURTO-CIRCUITO (2026-07-27) ──────────────────────────────────────────────────────
 # A primeira versão fazia \`|| exit 1\` em cada elo, então o primeiro que falhasse escondia o
-# resto. Medido ao instalar o kit no forja: o hook externo bloqueava por README velho, e os
+# resto. Medido ao instalar o kit num leaf da frota: o hook externo bloqueava por README velho, e os
 # checks do leaf — recém-instalados — não chegavam a rodar. Quem olhasse a saída concluiria
 # que o kit não estava lá.
 # O bloqueio continua igual: se QUALQUER elo falha, o commit não passa. O que muda é que

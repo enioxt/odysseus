@@ -8,8 +8,8 @@
 # chama, então não tem como vir do kernel em tempo de execução sem um salto de confiança.
 #
 # Resultado: um leaf instalado antes do v2.1 roda o executor antigo e ignora o piso em silêncio.
-# Foi exatamente o que aconteceu com o daniel-falencias — o repositório com dado real de
-# cliente ficou como o ÚNICO leaf sem piso, e o termômetro ainda o creditava como coberto.
+# Foi exatamente o que aconteceu com um leaf da frota — o repositório com dado real de
+# cliente ficou como o ÚNICO sem piso, e o termômetro ainda o creditava como coberto.
 # É o mesmo formato de defeito de sempre: a diferença não dói, ela só não aparece.
 #
 # Este check é o remédio mais barato possível: o kit reclama de si mesmo, toda vez, até alguém

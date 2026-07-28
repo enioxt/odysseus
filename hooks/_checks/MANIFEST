@@ -20,3 +20,8 @@
 # Na máquina com kernel o piso já resolve em tempo de execução. Estes nomes estão aqui
 # para a máquina SEM kernel — sócio, VPS, CI — onde só vale o que está vendorizado.
 03-doc-size.sh
+
+# ── piso do kernel, escrito por leaf-kit-sync (2026-07-28) ──
+# Na máquina com kernel o piso já resolve em tempo de execução. Estes nomes estão aqui
+# para a máquina SEM kernel — sócio, VPS, CI — onde só vale o que está vendorizado.
+18-promover-ao-kernel.sh
