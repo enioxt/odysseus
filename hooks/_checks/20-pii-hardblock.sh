@@ -4,8 +4,9 @@
 # 20-sovereign-guard.sh (fundidos num único check self-contained, sem path de kernel).
 #
 # HARD BLOCK (não warn) de:
-#   (a) PII real BR no CONTEÚDO dos arquivos de texto staged: CPF, CNPJ, RG, número de
-#       processo CNJ. Nunca imprime o valor casado — só arquivo:linha:tipo (R-SEC-007:
+#   (a) PII real BR no CONTEÚDO dos arquivos de texto staged: CPF e RG de PESSOA.
+#       CNPJ (empresa, D-008) e número de processo CNJ (D-006) são AVISO, não bloqueio —
+#       ambos são públicos por lei. Nunca imprime o valor casado — só arquivo:linha:tipo (R-SEC-007:
 #       agente nunca ecoa valor de dado sensível).
 #   (b) qualquer arquivo STAGED sob um diretório "protegido" (dado real de processo/
 #       cliente que nunca deve ir pro GitHub). O `.gitignore` já cobre `git add`, mas
@@ -89,7 +90,26 @@ fi
 
 EXCEPT_RE='exemplo|ficticio|fictício|FULANO|000\.000|123\.456'
 
-CPF_RE='[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}'
+# ── CPF: PII-CPF-BORDA-001 (2026-07-27) ──────────────────────────────────────────────────────
+# ANTES era uma expressão só, com TODOS os separadores opcionais: '[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}'
+# — ou seja, qualquer corrida de 11 dígitos, em qualquer lugar, inclusive DENTRO de um número
+# maior. Bloqueou o `daniel-falencias` num UUID de tenant: `...-180931982899` contém 11 dígitos
+# seguidos e virou "CPF". O arquivo estava commitado havia semanas; o falso-positivo só apareceu
+# agora porque este check acabou de passar a rodar naquele repo.
+#
+# É a MESMA correção que o RG recebeu em 26/07 e o CNPJ em 27/07, pela terceira vez no mesmo
+# arquivo: expressão sem borda não distingue o dado do dígito que passava por ali. E é a mesma
+# forma que o gate local do daniel-falencias (21-pii-hardblock.sh) já usa em produção desde
+# 15/07, também depois de bloquear em falso.
+#
+# AGORA, duas expressões, como no RG:
+#   FMT  — pontuação OBRIGATÓRIA (3 dígitos, ponto, 3, ponto, 3, hífen, 2): bloqueia sempre.
+#          Escrito por extenso de propósito: um CPF-molde literal aqui faz o gitleaks acusar o
+#          próprio arquivo que define a regra — aconteceu ao commitar esta linha.
+#   BARE — 11 dígitos crus: exige borda não-dígito antes E depois, então não casa como pedaço
+#          de UUID, timestamp, hash ou número de processo.
+CPF_FMT_RE='[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}'
+CPF_BARE_RE='(^|[^0-9])[0-9]{11}([^0-9]|$)'
 CNPJ_RE='[0-9]{2}\.?[0-9]{3}\.?[0-9]{3}/?[0-9]{4}-?[0-9]{2}'
 CNJ_RE='[0-9]{7}[-.]?[0-9]{2}\.?[0-9]{4}\.?[0-9]\.?[0-9]{2}\.?[0-9]{4}'
 
@@ -110,7 +130,7 @@ CNJ_RE='[0-9]{7}[-.]?[0-9]{2}\.?[0-9]{4}\.?[0-9]\.?[0-9]{2}\.?[0-9]{4}'
 # porque a alternativa media pior — a versão antiga não distinguia RG de número de lei, e um
 # gate que acusa tudo não está detectando nada, só bloqueando. Onde o RG cru de fato aparece
 # (documento, cadastro, qualificação de parte) o rótulo vem junto, e é lá que o BARE pega.
-# Golden nos dois sentidos: 20-pii-hardblock.test.sh.
+# Golden nos dois sentidos: ../_tests/20-pii-hardblock.test.sh.
 RG_FMT_RE='[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9Xx]'
 RG_BARE_RE='(^|[^0-9./-])[0-9]{8,9}([^0-9./-]|$)'
 RG_ROTULO_RE='\bRGs?\b|registro[ -]geral|carteira de identidade|\bidentidade\b|\bid civil\b'
@@ -118,6 +138,7 @@ RG_ROTULO_RE='\bRGs?\b|registro[ -]geral|carteira de identidade|\bidentidade\b|\
 FOUND=0
 FINDINGS=""
 PROCESSOS_VISTOS=0
+CNPJ_VISTOS=0   # D-008: CNPJ de empresa é aviso, não bloqueio — mas nunca some da vista
 
 for FILE in $STAGED_TEXT; do
   case "$FILE" in
@@ -142,16 +163,44 @@ for FILE in $STAGED_TEXT; do
   # caso de teste cita um. Gate que barra todo commit que menciona um processo, num repositório
   # sobre processos, é contornado toda vez — e aí para de proteger o que importa. Ele segue
   # LISTADO no relatório, como aviso, para nunca sumir da vista.
-  # CPF, CNPJ e RG de pessoa continuam BLOQUEANDO. Golden nos dois sentidos:
-  # templates/leaf-kit/hooks/_checks/20-pii-hardblock.test.sh
+  # CPF e RG de pessoa continuam BLOQUEANDO (CNPJ saiu em D-008). Golden nos dois sentidos:
+  # templates/leaf-kit/hooks/_tests/20-pii-hardblock.test.sh
   CONTEUDO_SEM_PROCESSO=$(printf '%s\n' "$STAGED_CONTENT" | sed -E "s#${CNJ_RE}#<numero-de-processo>#g")
   N_PROCESSOS=$(printf '%s\n' "$STAGED_CONTENT" | grep -oE "$CNJ_RE" | wc -l | tr -d ' ')
   [ "$N_PROCESSOS" -gt 0 ] && PROCESSOS_VISTOS=$((PROCESSOS_VISTOS + N_PROCESSOS))
 
-  for LABEL in CPF CNPJ RG RG_BARE; do
+  # ── D-008 (calibragem, 2026-07-27 — corte Enio: "não devemos ter um gate tão severo assim") ──
+  # CNPJ sai do bloqueio e passa a AVISO, pela mesma razão que o número de processo saiu em D-006.
+  #
+  # CNPJ é o cadastro de uma pessoa JURÍDICA. É público por lei, consultável por qualquer um na
+  # Receita Federal, e nos nossos repositórios ele chega de API pública sem chave (BrasilAPI). A
+  # LGPD protege pessoa NATURAL; empresa não é titular de dado pessoal. Bloquear CNPJ não protegia
+  # ninguém — só ensinava a usar override, que é como um gate morre.
+  #
+  # FATO GERADOR: a decisão D-008, que PERGUNTAVA se o gate deveria tratar CNPJ como dado pessoal,
+  # foi barrada por este gate porque citava um CNPJ. A pergunta sobre o detector, bloqueada pelo
+  # detector. Antes dela, a regra A2 do radar do Daniel — cuja evidência é o par de CNPJs que
+  # provou que a administração judicial tem 1 sócio e a sociedade de advogados tem 22 — ficou dias
+  # fora do git, porque a prova não pode ser mascarada sem deixar de ser prova.
+  #
+  # O QUE NÃO MUDOU: CPF e RG de pessoa continuam BLOQUEANDO, exatamente como antes. É o ponto
+  # todo — o gate fica MAIS preciso, não mais frouxo: para de gritar em cima de dado público de
+  # empresa e segue barrando o que é de pessoa.
+  # Golden nos dois sentidos: templates/leaf-kit/hooks/_tests/20-pii-hardblock.test.sh
+  # E o CNPJ é CONSUMIDO do texto, não apenas ignorado no laço — pelo mesmo motivo do processo.
+  # Achado pelo golden ao escrever esta calibragem: um CNPJ cru tem 14 dígitos, e a expressão
+  # de CPF (11 dígitos, separadores opcionais, sem âncora) casa com os 11 primeiros. Um CNPJ cru
+  # era reportado como CPF e bloqueava. Sem consumir antes, tirar o CNPJ do laço não bastaria — o
+  # gate seguiria barrando o mesmo texto sob outro rótulo, que é pior: erra e ainda mente sobre o
+  # que achou.
+  N_CNPJ=$(printf '%s\n' "$CONTEUDO_SEM_PROCESSO" | grep -oE "$CNPJ_RE" | wc -l | tr -d ' ')
+  [ "$N_CNPJ" -gt 0 ] && CNPJ_VISTOS=$((CNPJ_VISTOS + N_CNPJ))
+  CONTEUDO_SEM_PROCESSO=$(printf '%s\n' "$CONTEUDO_SEM_PROCESSO" | sed -E "s#${CNPJ_RE}#<cnpj-de-empresa>#g")
+
+  for LABEL in CPF CPF_BARE RG RG_BARE; do
     case "$LABEL" in
-      CPF) RE="$CPF_RE" ;;
-      CNPJ) RE="$CNPJ_RE" ;;
+      CPF) RE="$CPF_FMT_RE" ;;
+      CPF_BARE) RE="$CPF_BARE_RE" ;;
       RG) RE="$RG_FMT_RE" ;;
       RG_BARE) RE="$RG_BARE_RE" ;;
     esac
@@ -166,7 +215,11 @@ for FILE in $STAGED_TEXT; do
       if [ "$LABEL" = "RG_BARE" ] && ! echo "$CONTENT" | grep -qiE "$RG_ROTULO_RE"; then
         continue
       fi
-      [ "$LABEL" = "RG_BARE" ] && LABEL_REPORT="RG" || LABEL_REPORT="$LABEL"
+      case "$LABEL" in
+        RG_BARE) LABEL_REPORT="RG" ;;
+        CPF_BARE) LABEL_REPORT="CPF" ;;
+        *) LABEL_REPORT="$LABEL" ;;
+      esac
       FOUND=1
       FINDINGS="${FINDINGS}     ${FILE}:${LN}:${LABEL_REPORT}
 "
@@ -194,8 +247,14 @@ fi
 
 # D-006: número de processo NÃO bloqueia, mas nunca some da vista — some da vista é como uma
 # exceção vira buraco. O contador aparece sempre que houver, mesmo no caminho de sucesso.
-if [ "$PROCESSOS_VISTOS" -gt 0 ]; then
-  echo "  [20-pii-hardblock] sem PII de pessoa ✅ · ${PROCESSOS_VISTOS} número(s) de processo nos staged (público, não bloqueia — D-006)"
+AVISOS=""
+[ "$PROCESSOS_VISTOS" -gt 0 ] && AVISOS="${PROCESSOS_VISTOS} número(s) de processo (D-006)"
+if [ "$CNPJ_VISTOS" -gt 0 ]; then
+  [ -n "$AVISOS" ] && AVISOS="$AVISOS · "
+  AVISOS="${AVISOS}${CNPJ_VISTOS} CNPJ de empresa (D-008)"
+fi
+if [ -n "$AVISOS" ]; then
+  echo "  [20-pii-hardblock] sem PII de pessoa ✅ · ${AVISOS} nos staged — público, não bloqueia"
 else
   echo "  [20-pii-hardblock] sem PII detectada nos staged ✅"
 fi
