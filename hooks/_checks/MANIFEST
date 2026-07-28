@@ -1,0 +1,17 @@
+# EGOS-LEAF-KIT — checks OBRIGATÓRIOS deste repo (fail-closed: listado+ausente = bloqueia).
+# 1 nome por linha. Checks extras em _checks/ fora desta lista também rodam (versão local).
+# Nome que exista no kernel (templates/leaf-kit/hooks/_checks/) roda na versão kernel-vivo.
+#
+# ⚠️ ESTA CÓPIA, no kernel, É O PISO DA FROTA (v2.1, corte Enio 2026-07-27 — M1).
+# Todo leaf roda piso-do-kernel ∪ MANIFEST-local. Acrescentar um nome AQUI liga o check em
+# todos os repositórios na execução seguinte, sem editar repositório nenhum — que é o buraco
+# que o LEAF-KIT-COBERTURA-001 fechou. Retirar um nome daqui DESLIGA a frota inteira.
+# Regra de entrada no piso: o check tem que (a) viajar vendorizado neste diretório e
+# (b) ser universal — nada que dependa de caminho, stack ou layout de um repo só.
+# Check novo entra em WARN e só vira BLOCK depois de calibrado com a frota rodando.
+00-env-plaintext.sh
+01-secrets.sh
+10-conflict-markers.sh
+16-code-size.sh
+17-kit-selfcheck.sh
+20-pii-hardblock.sh

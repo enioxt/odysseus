@@ -1,0 +1,167 @@
+#!/bin/sh
+# EGOS-LEAF-KIT v2.1 (2026-07-27) — pre-commit DESPACHANTE híbrido kernel-vivo
+#
+# v2.1 (corte Enio 2026-07-27, M1 — direção + desenho; LEAF-KIT-COBERTURA-001):
+#   O v2.0 sincronizava o CONTEÚDO dos checks e não a LISTA. Gate novo no kernel nunca
+#   chegava em leaf nenhum: chegar exigia editar o MANIFEST de cada repositório, e nada
+#   fazia isso. Medido em 27/07: `16-code-size.sh` estava no kit desde 23/07 e ZERO dos
+#   29 repositórios o declarava.
+#     → A lista efetiva agora é PISO DO KERNEL ∪ MANIFEST LOCAL.
+#       O piso é o MANIFEST do próprio kit no kernel — o arquivo já existia e já viajava.
+#       Gate novo entra no piso e chega em todo mundo na execução seguinte, sem editar
+#       repositório nenhum. O leaf continua podendo ACRESCENTAR; não pode mais subtrair.
+#     → Sem kernel na máquina (parceiro, VPS, CI) não há piso a aplicar: vale o MANIFEST
+#       vendorizado, como no v2.0. Fail-closed nunca fica mais frouxo, e um piso que não
+#       chegou também não trava commit alheio por check ausente.
+#     → `*.test.sh` deixou de ser executado. Teste não é check: `20-pii-hardblock.test.sh`
+#       mora em `_checks/`, caía no ramo de extras, rodava sob dash a partir da raiz e
+#       saía exit 1 — instalar o kit travava TODOS os commits do repositório, e ninguém
+#       sabia porque ninguém instalou desde que ele nasceu, em 25/07. O padrão de nome
+#       basta para desarmar; separar os diretórios fica para quando a calibragem D-008,
+#       aberta noutra janela sobre esse mesmo arquivo, tiver pousado.
+#     → O de-duplicador de extras usava `grep "^nome$"` no MANIFEST cru, então nome seguido
+#       de comentário na mesma linha escapava e o check rodava DUAS vezes. Agora compara
+#       contra a lista já normalizada.
+#
+# v2.0 (corte Enio 2026-07-16, 2 cortes: direção + desenho — "usar o kernel de
+# verdade; cópia atrasa com o tempo"):
+#   O kit local define O QUE roda (MANIFEST); o kernel, quando presente na máquina,
+#   fornece a versão MAIS FRESCA de cada check de mesmo nome (ramo kernel-vivo —
+#   nunca atrasa). Sem kernel (máquina de parceiro, VPS, CI), roda a cópia
+#   vendorizada que viaja no git — fail-closed, mantida fresca via /disseminate.
+#   - _checks/MANIFEST lista os checks OBRIGATÓRIOS (1 nome por linha; # = comentário).
+#     Check listado ausente = BLOQUEIA (herda o fail-closed do v1.2 — apagar um check
+#     não reduz cobertura em silêncio). Checks locais extras (fora do MANIFEST)
+#     também rodam, sempre na versão local (calibração do repo vence).
+#   - Sem MANIFEST = fail-closed (kit incompleto).
+# v1.1: CHECKS_DIR auto-localizado a partir de $0. v1.2: fail-closed p/ check ausente.
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  echo "pre-commit: não estou dentro de um repo git — pulando." >&2
+  exit 0
+fi
+cd "$REPO_ROOT" || exit 1
+
+# Resolve symlink (git chama .git/hooks/pre-commit -> ../../hooks/pre-commit; sem
+# isto, $0 aponta pro dir do SYMLINK e _checks/ não é achado — bug pego em live-fire
+# 2026-07-16 pelo próprio fail-closed).
+SELF="$0"
+while [ -L "$SELF" ]; do
+  LINK=$(readlink "$SELF")
+  case "$LINK" in
+    /*) SELF="$LINK" ;;
+    *)  SELF="$(dirname "$SELF")/$LINK" ;;
+  esac
+done
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SELF")" && pwd)
+CHECKS_DIR="$SCRIPT_DIR/_checks"
+MANIFEST="$CHECKS_DIR/MANIFEST"
+OVERALL=0
+
+# Ramo kernel-vivo: EGOS_KERNEL_PATH > ~/egos; precisa conter o kit canônico.
+KERNEL="${EGOS_KERNEL_PATH:-$HOME/egos}"
+KERNEL_CHECKS="$KERNEL/templates/leaf-kit/hooks/_checks"
+if [ -d "$KERNEL_CHECKS" ] && [ "$KERNEL_CHECKS" != "$CHECKS_DIR" ]; then
+  MODE="kernel-vivo ($KERNEL_CHECKS)"
+else
+  KERNEL_CHECKS=""
+  MODE="vendorizado (kernel não encontrado — cópia do git; atualize via git pull)"
+fi
+
+run_check() {
+  NAME="$1"
+  LOCAL="$CHECKS_DIR/$NAME"
+  SRC="$LOCAL"; TAG="local"
+  if [ -n "$KERNEL_CHECKS" ] && [ -f "$KERNEL_CHECKS/$NAME" ]; then
+    SRC="$KERNEL_CHECKS/$NAME"; TAG="kernel"
+  fi
+  if [ ! -f "$SRC" ]; then
+    # ── De quem é a culpa muda o que fazer (v2.1, achado em teste adversarial 27/07) ──
+    # Nome que veio SÓ DO PISO e não tem arquivo em lugar nenhum = defeito do KERNEL (um typo
+    # no MANIFEST do kernel, digamos). Medido: um único nome errado lá travava o commit de
+    # TODOS os repositórios da máquina, com uma mensagem mandando o leaf se reinstalar — culpa
+    # no lugar errado e apagão de frota por causa de uma letra.
+    # Não há o que pular em silêncio: o check não existe em canto nenhum. Então grita e segue.
+    # Nome declarado pelo LEAF continua fail-closed: a declaração é dele, apagar o arquivo é
+    # reduzir cobertura, e isso nunca passa calado.
+    if printf '%s\n' "$PISO" | grep -qx "$NAME" && ! grep -q "^${NAME}" "$MANIFEST" 2>/dev/null; then
+      echo "⚠️  [$NAME] está no PISO DO KERNEL mas não existe arquivo — defeito do KERNEL, não deste repo." >&2
+      echo "   Conserte em \$EGOS_KERNEL_PATH/templates/leaf-kit/hooks/_checks/ (arquivo ou MANIFEST)." >&2
+      echo "   Não bloqueio: um typo no kernel não pode parar a frota inteira." >&2
+      return 0
+    fi
+    echo "❌ [$NAME] check OBRIGATÓRIO ausente ($SRC)." >&2
+    echo "   Fail-closed: nunca pulamos um check em silêncio. Reinstale: leaf-init --apply" >&2
+    OVERALL=1
+    return 1
+  fi
+  if ! sh "$SRC"; then
+    echo "   ↳ [$NAME] falhou (fonte: $TAG)" >&2
+    OVERALL=1
+  fi
+}
+
+echo "🔒 pre-commit EGOS-LEAF-KIT v2.1 — modo: $MODE"
+
+if [ ! -f "$MANIFEST" ]; then
+  echo "❌ MANIFEST ausente ($MANIFEST) — kit incompleto/corrompido. Fail-closed." >&2
+  echo "   Reinstale: bun \$EGOS_KERNEL_PATH/scripts/leaf-init.ts <este-repo> --apply" >&2
+  exit 1
+fi
+
+# Lista efetiva = PISO DO KERNEL ∪ MANIFEST LOCAL, normalizada (sem comentário, sem espaço,
+# sem vazio, sem repetido). O piso só entra quando o kernel está na máquina — é de lá que os
+# arquivos do piso vêm, então piso e arquivo chegam sempre juntos e nunca há listado-ausente.
+PISO=""
+if [ -n "$KERNEL_CHECKS" ] && [ -f "$KERNEL_CHECKS/MANIFEST" ]; then
+  PISO=$(cat "$KERNEL_CHECKS/MANIFEST")
+fi
+LISTA=$(printf '%s\n%s\n' "$PISO" "$(cat "$MANIFEST")" \
+  | sed 's/#.*//' | tr -d ' \t' | grep -v '^$' | sort -u)
+
+# Quanto o piso acrescentou a este repo — a diferença é a cobertura que o leaf ganhou sem
+# ninguém editar o leaf. Dizer isso em voz alta é metade do conserto: o buraco antigo era
+# invisível justamente porque ninguém contava.
+if [ -n "$PISO" ]; then
+  LOCAL_N=$(sed 's/#.*//' "$MANIFEST" | tr -d ' \t' | grep -vc '^$')
+  TOTAL_N=$(printf '%s\n' "$LISTA" | grep -vc '^$')
+  [ "$TOTAL_N" -gt "$LOCAL_N" ] && \
+    echo "   ↑ piso do kernel acrescentou $((TOTAL_N - LOCAL_N)) check(s) a este repo."
+fi
+
+# 1) obrigatórios (kernel-vivo quando o nome existe no kernel). Nomes de check não têm
+#    espaço — o word-splitting do `for` é seguro aqui e evita o subshell do `while read`,
+#    que engoliria o OVERALL.
+#
+#    `set -f` não é enfeite: expansão sem aspas faz word-splitting E GLOBBING. Um `*` no
+#    MANIFEST (typo, ou alguém achando que dava pra listar por padrão) expandia contra a raiz
+#    do repositório e transformava arquivos quaisquer em "checks obrigatórios ausentes",
+#    travando o commit com uma mensagem que não fazia sentido nenhum. Medido em teste
+#    adversarial 27/07 — regressão nossa, o `while read` do v2.0 não tinha isso.
+set -f
+for CHECK in $LISTA; do
+  run_check "$CHECK"
+done
+set +f   # o laço de extras abaixo PRECISA de glob
+
+# 2) extras locais fora da lista (sempre versão local — calibração do repo vence).
+#    `*.test.sh` NÃO roda: teste não é check (ver cabeçalho, v2.1).
+for F in "$CHECKS_DIR"/*.sh; do
+  [ -f "$F" ] || continue
+  BASE=$(basename "$F")
+  case "$BASE" in *.test.sh) continue ;; esac
+  printf '%s\n' "$LISTA" | grep -qx "$BASE" && continue
+  if ! sh "$F"; then
+    echo "   ↳ [$BASE] (extra local) falhou" >&2
+    OVERALL=1
+  fi
+done
+
+if [ "$OVERALL" = "1" ]; then
+  echo ""
+  echo "❌ COMMIT BLOQUEADO — corrija os itens acima antes de tentar de novo."
+  exit 1
+fi
+echo "✅ pre-commit: todos os checks passaram."
+exit 0
