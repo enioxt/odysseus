@@ -149,7 +149,7 @@ EXCEPT_RE='exemplo|ficticio|fictício|FULANO|000\.000|123\.456'
 # dígitos que não fecha NÃO PODE ser um CPF. Ensinar isto ao gate não afrouxa nada — todo CPF de
 # verdade continua sendo pego. É aritmética, não política de segurança.
 #
-# O que motivou: medido na base do daniel-falencias, 169 números de 11 dígitos sem rótulo têm DV
+# O que motivou: medido numa base jurídica real, 169 números de 11 dígitos sem rótulo têm DV
 # INVÁLIDO (são ID de documento do PJe, protocolo, número de peça) contra 3 com DV válido. O gate
 # acusava 169 falsos positivos para proteger no máximo 3 casos duvidosos — e era a 3ª vez em 4
 # dias que ele parava trabalho legítimo (D-006 número de processo, D-008 CNPJ, agora ID do PJe).
@@ -235,7 +235,7 @@ RG_ROTULO_RE='\bRGs?\b|registro[ -]geral|carteira de identidade|\bidentidade\b|\
 # Em `.jsonl` a linha É O REGISTRO INTEIRO — um transcript de conversa cabe em uma linha de
 # centenas de KB. Ali "mesma linha" não significa nada, e o gate erra nas DUAS direções:
 #   FALSO POSITIVO  — a palavra "CPF" numa ponta do registro qualifica um número de protocolo
-#                     na outra ponta. Sintoma medido: um arquivo do daniel-falencias ficou fora
+#                     na outra ponta. Sintoma medido: um arquivo de repo de cliente ficou fora
 #                     do git por isso, e **sem override** — a pessoa não contornou o gate, parou.
 #   FALSO NEGATIVO  — a palavra "exemplo" numa ponta isenta um CPF REAL na outra. Este é o caro:
 #                     dado pessoal entra no git em silêncio, e nada avisa. Não foi reportado por
