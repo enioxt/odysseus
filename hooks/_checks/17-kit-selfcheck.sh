@@ -38,6 +38,43 @@ done
 # Mesmo arquivo (o próprio kernel) — nada a comparar.
 [ "$LOCAL_EXE" -ef "$KERNEL_EXE" ] && exit 0
 
+# ── CÓPIA VENDORIZADA INCOMPLETA (LEAFKIT-FALHA-ABERTO-001, corte Enio 2026-08-06) ────────────
+#
+# O GOLDEN 12 do leaf-init ficou VERMELHO de 03/08 a 06/08 e o handoff repetia todo dia que "um
+# repo-folha pode perder proteção em silêncio". Medido nos quatro cenários, rodando o dispatcher
+# de verdade: **é falso**. Apagar um check da cópia local com o kernel presente não tira proteção
+# nenhuma — o dispatcher resolve do kernel vivo e o check RODA. Sem kernel, ele falha-fechado,
+# exatamente como o desenho promete. O teste é que media o ambiente achando que media a lei.
+#
+# O que a medição achou de verdade é isto, e é estreito: aqui a cópia quebrada passa CALADA. O
+# repositório segue para uma máquina SEM kernel (sócio, VPS, CI) e lá o mesmo dispatcher
+# falha-fechado e bloqueia TUDO — a conta aparece longe de quem a criou, e para quem não pode
+# consertar. É o formato de defeito de sempre: a diferença não dói, ela só não aparece.
+#
+# WARN e não BLOCK, pela razão já escrita no topo deste arquivo: com o kernel presente a proteção
+# está intacta, e travar o commit de alguém por uma cópia quebrada é cobrar do leaf uma conta do
+# kernel — que é como um gate ensina override.
+#
+# O MANIFEST conferido é o LOCAL de propósito: é ele que o dispatcher usa no modo vendorizado, ou
+# seja, é exatamente a lista que vai bloquear quando o repositório viajar.
+CHECKS_LOCAIS="$(dirname "$LOCAL_EXE")/_checks"
+MANIFEST_LOCAL="$CHECKS_LOCAIS/MANIFEST"
+if [ -f "$MANIFEST_LOCAL" ]; then
+  FALTANDO=""
+  while IFS= read -r NOME || [ -n "$NOME" ]; do
+    NOME=$(printf '%s' "$NOME" | tr -d ' \t\r')
+    case "$NOME" in ''|'#'*) continue ;; esac
+    [ -f "$CHECKS_LOCAIS/$NOME" ] || FALTANDO="$FALTANDO $NOME"
+  done < "$MANIFEST_LOCAL"
+  if [ -n "$FALTANDO" ]; then
+    echo "  ⚠️  KIT-SELFCHECK: a cópia vendorizada deste repo está INCOMPLETA —$FALTANDO"
+    echo "      Aqui NÃO há perda de proteção: o kernel está presente e esses checks rodam dele."
+    echo "      Mas este repositório, numa máquina sem kernel, vai falhar-fechado e bloquear TUDO —"
+    echo "      e o aviso só apareceria lá, para quem não pode consertar."
+    echo "      Conserto: bun \$EGOS_KERNEL_PATH/scripts/leaf-init.ts . --apply"
+  fi
+fi
+
 _ver() { grep -o 'EGOS-LEAF-KIT v[0-9][0-9.]*' "$1" 2>/dev/null | head -1 | sed 's/.*v//'; }
 LOCAL_V=$(_ver "$LOCAL_EXE")
 KERNEL_V=$(_ver "$KERNEL_EXE")

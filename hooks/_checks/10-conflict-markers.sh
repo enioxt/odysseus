@@ -1,6 +1,6 @@
 #!/bin/sh
 # EGOS-LEAF-KIT — bloqueia commit se houver marcadores de merge não resolvidos em
-# arquivos staged. Generalizado de daniel-falencias/hooks/_checks/conflict-markers.sh
+# arquivos staged. Generalizado de um check já rodado em produção num leaf desta frota
 # (self-contained).
 #
 # v1.1: escaneia o CONTEÚDO STAGED (git show ":$FILE", o blob no índice), não o

@@ -1,6 +1,6 @@
 #!/bin/sh
 # EGOS-LEAF-KIT — Pre-Commit Check 00 — ENV Plaintext Hard-Block
-# Generalizado de daniel-falencias/hooks/_checks/00-env-plaintext.sh (ADOPT-BEFORE-BUILD,
+# Generalizado de um check já rodado em produção num leaf desta frota (ADOPT-BEFORE-BUILD,
 # self-contained, zero dependência de kernel).
 #
 # gitignore protege contra `git add`, mas NÃO contra `git add -f`. Este check bloqueia

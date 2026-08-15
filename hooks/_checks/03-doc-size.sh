@@ -6,6 +6,11 @@
 # Alinhado 2026-07-26 (corte Enio). Antes: TASKS 500/900 e AGENTS 350/500 aqui, contra
 # AGENTS 200 / TASKS 500 no ci.yml e 400/600 no CLAUDE.md — três fontes, três números para
 # o mesmo arquivo, num par de gates cujo nome é "doc-size"/"SSOT drift".
+# 2026-08-03: o kernel subiu para 700/900 e o kit NÃO acompanha — de propósito, e a
+# diferença passa a ser declarada em vez de acidental. O 900 foi calibrado para a densidade
+# do TASKS.md do kernel (~3,7 linhas por task, porque cada uma carrega prova com file:line).
+# Leaf começa vazio: herdar 900 seria dar a um repo novo um teto que ele não sabe usar.
+# Se um leaf chegar perto de 600 com tasks legítimas, sobe-se AQUI, com a medição dele.
 LIMITS_TASKS_WARN=400
 LIMITS_TASKS_HARD=600
 LIMITS_AGENTS_WARN=350

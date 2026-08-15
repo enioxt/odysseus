@@ -1,6 +1,6 @@
 #!/bin/sh
 # EGOS-LEAF-KIT — Pre-Commit Check 01 — Secret Scanning
-# Generalizado de daniel-falencias/hooks/_checks/01-secrets.sh (ADOPT-BEFORE-BUILD,
+# Generalizado de um check já rodado em produção num leaf desta frota (ADOPT-BEFORE-BUILD,
 # self-contained). Detecta chaves de API e secrets antes do commit. Usa gitleaks SE
 # estiver instalado (opcional) + grep de padrões conhecidos de secret (sempre disponível).
 #
@@ -30,7 +30,7 @@ fi
 # (não o working-tree).
 STAGED_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|py|sh|env|json)$' | grep -v '\.example$' | grep -v 'test' || true)
 if [ -n "$STAGED_CODE" ]; then
-  for pattern in 'sk-or-[a-zA-Z0-9]\{20,\}' 'sk-ant-[a-zA-Z0-9]\{20,\}' 'AIza[a-zA-Z0-9_-]\{30,\}' 'eyJhbGciOi[a-zA-Z0-9._-]\{30,\}' 'sbp_[a-zA-Z0-9]\{20,\}' 'ghp_[a-zA-Z0-9]\{20,\}' 'xoxb-[a-zA-Z0-9-]\{10,\}'; do
+  for pattern in 'sk-or-[a-zA-Z0-9_-]{20,}' 'sk-ant-[a-zA-Z0-9_-]{20,}' 'AIza[a-zA-Z0-9_-]{30,}' 'eyJhbGciOi[a-zA-Z0-9._-]{30,}' 'sbp_[a-zA-Z0-9]{20,}' 'ghp_[a-zA-Z0-9]{20,}' 'xoxb-[a-zA-Z0-9-]{10,}'; do
     for FILE in $STAGED_CODE; do
       STAGED_CONTENT=$(git show ":$FILE" 2>/dev/null || true)
       if [ -n "$STAGED_CONTENT" ] && echo "$STAGED_CONTENT" | grep -qE "$pattern"; then

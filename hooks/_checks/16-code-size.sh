@@ -2,7 +2,7 @@
 # EGOS Pre-Commit — Code File Size (R3.4 vira GATE → R-REFACTOR-ORG-001). WARN-only (calibragem progressiva).
 #
 # POR QUE EXISTE: R3.4 (">300 LOC → refatorar") vivia só como TEXTO no CLAUDE.md/AGENTS.md,
-# sem enforcement — por isso analisar_caso.py (intelink) chegou a 6232 linhas sem nada disparar.
+# sem enforcement — por isso um único arquivo de motor chegou a 6232 linhas sem nada disparar.
 # Infra de tamanho existia só p/ DOC (03-doc-size.sh: TASKS/AGENTS). Este espelha p/ CÓDIGO.
 #
 # CONST-DESIGN (M1, cortes Enio 2026-07-22 + reconciliação 2026-07-23):

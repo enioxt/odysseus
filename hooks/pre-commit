@@ -1,5 +1,23 @@
 #!/bin/sh
-# EGOS-LEAF-KIT v2.1 (2026-07-27) — pre-commit DESPACHANTE híbrido kernel-vivo
+# EGOS-LEAF-KIT v2.2 (2026-08-07) — pre-commit DESPACHANTE híbrido kernel-vivo
+#
+# ── CONTRATO DE PLATAFORMA (declarado porque foi MEDIDO, não porque soa razoável) ────────────
+#   PROVADO em Linux (bash/dash) — golden `hooks/_tests/kit-portabilidade.test.sh`, que inclui
+#   a simulação do modo de falha do Windows (hook COPIADO em vez de linkado).
+#   RELATADO em Windows/Git-Bash por um parceiro da frota (07/08) para os 2 defeitos que
+#   ele achou; o conserto deles ainda NÃO foi re-observado por nós numa máquina Windows.
+#   NÃO MEDIDO: macOS, WSL, CI hospedado.
+#   Quem rodar em plataforma não medida e passar/falhar: registre aqui. Este bloco é a régua —
+#   "funciona em qualquer máquina com git" era o que estava escrito antes, e era uma suposição
+#   com cara de fato. Os 2 primeiros bugs de Windows apareceram no PRIMEIRO contato com Windows.
+#
+# v2.2 (2026-08-07, incidente Windows em máquina de parceiro — LEAFKIT-FALHA-ABERTO-002):
+#   → `_checks/` deixa de ser achado só por `$0` (inferência sobre a INVOCAÇÃO) e ganha
+#     fallback pela RAIZ DO REPO (fato). Hook copiado/destacado do kit parava de achar o
+#     MANIFEST e travava TODO commit; agora acha e roda.
+#   → Fail-closed passa a oferecer um conserto que o LEITOR consegue executar
+#     (LEAFKIT-CONSERTO-IMPOSSIVEL-001): `sh hooks/install.sh` (só sh+git) antes de qualquer
+#     comando que exija bun/kernel — que a máquina de parceiro, por desenho, não tem.
 #
 # v2.1 (corte Enio 2026-07-27, M1 — direção + desenho; LEAF-KIT-COBERTURA-001):
 #   O v2.0 sincronizava o CONTEÚDO dos checks e não a LISTA. Gate novo no kernel nunca
@@ -56,6 +74,41 @@ while [ -L "$SELF" ]; do
 done
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SELF")" && pwd)
 CHECKS_DIR="$SCRIPT_DIR/_checks"
+
+# ── LEAFKIT-FALHA-ABERTO-002 (2026-08-07) — achar o kit pela RAIZ DO REPO, não pela invocação ──
+#
+# O bloco acima resolve symlink porque, até aqui, o kit se localizava por `$0` — ou seja, por
+# uma INFERÊNCIA sobre COMO ele foi chamado. Funciona enquanto a invocação preserva um caminho
+# de volta ao kit. Quando não preserva, `_checks/` some e o MANIFEST some junto: o dispatcher
+# cai no fail-closed lá embaixo e BLOQUEIA TODO COMMIT — não só os ruins.
+#
+# Medido em máquina de parceiro (Windows, 07/08): `ln -sf` exige privilégio de symlink no
+# Windows e, sem ele, o Git Bash COPIA o arquivo em silêncio em vez de falhar. A cópia em
+# `.git/hooks/pre-commit` não é symlink, então o laço acima não dispara, SCRIPT_DIR vira
+# `.git/hooks` e `_checks/` não existe lá. Resultado: o repositório inteiro travado, numa
+# máquina sem kernel, para quem não tinha como consertar.
+#
+# Isto é a SEGUNDA PORTA do LEAFKIT-FALHA-ABERTO-001 (corte Enio 2026-08-06), que previu este
+# desfecho exato — "numa máquina sem kernel o dispatcher falha-fechado e bloqueia TUDO, e o
+# aviso só apareceria lá, para quem não pode consertar" — mas mitigou só a porta da CÓPIA
+# INCOMPLETA. A porta do HOOK DESTACADO DO KIT ficou aberta e foi por ela que o incidente veio.
+# Freio numa porta de duas é freio que se contorna sem saber.
+#
+# A régua honesta não é `$0`: é o repositório, que este script JÁ TEM em mãos desde o
+# `git rev-parse` acima. O kit mora numa de duas pastas conhecidas na raiz — a mesma descoberta
+# que `17-kit-selfcheck.sh` já fazia. Com isto, achar o kit deixa de depender de symlink,
+# de privilégio, de sistema operacional e do estilo de invocação.
+if [ ! -d "$CHECKS_DIR" ]; then
+  for _D in "$REPO_ROOT/hooks" "$REPO_ROOT/.egos-hooks"; do
+    if [ -d "$_D/_checks" ]; then
+      CHECKS_DIR="$_D/_checks"
+      echo "ℹ️  hook invocado de $SCRIPT_DIR (sem _checks/ do lado) — kit achado pela raiz do repo."
+      echo "   Instalação em estilo antigo: funciona, mas reinstale para voltar ao caminho curto."
+      break
+    fi
+  done
+fi
+
 MANIFEST="$CHECKS_DIR/MANIFEST"
 OVERALL=0
 
@@ -68,6 +121,36 @@ else
   KERNEL_CHECKS=""
   MODE="vendorizado (kernel não encontrado — cópia do git; atualize via git pull)"
 fi
+
+# ── LEAFKIT-CONSERTO-IMPOSSIVEL-001 (2026-08-07) — só mande fazer o que quem lê CONSEGUE fazer ──
+#
+# Todo fail-closed daqui dizia "Reinstale: bun $EGOS_KERNEL_PATH/scripts/leaf-init.ts --apply".
+# Esse comando exige o bun E o kernel — as duas coisas que, por desenho, a máquina de parceiro
+# NÃO TEM. O kit inteiro existe para rodar sem kernel; a mensagem de socorro dele assumia kernel.
+#
+# Medido no incidente de 07/08: um parceiro travado pelo fail-closed, com o kit íntegro no disco e
+# um `install.sh` de shell puro a dois diretórios de distância, a instrução na tela mandava
+# rodar o que ele não tinha como rodar. Ele contornou com `git config core.hooksPath` — solução
+# correta para quem foi empurrado nessa direção pela nossa própria mensagem.
+#
+# Mensagem de erro é interface de conserto. Quando o conserto que ela oferece é impossível para
+# o destinatário, ela não informa: ela empurra para o contorno. Agora a instrução é escolhida
+# pelo que existe NA MÁQUINA DE QUEM LEU, e a primeira opção é sempre a que só precisa de sh+git.
+_como_reinstalar() {
+  for _D in "$REPO_ROOT/hooks" "$REPO_ROOT/.egos-hooks"; do
+    if [ -f "$_D/install.sh" ]; then
+      echo "   Conserto (só precisa de sh + git, nada mais):" >&2
+      echo "     cd \"$REPO_ROOT\" && sh $(basename "$_D")/install.sh" >&2
+      return 0
+    fi
+  done
+  if [ -d "$KERNEL/templates/leaf-kit" ]; then
+    echo "   Conserto: bun \"$KERNEL/scripts/leaf-init.ts\" \"$REPO_ROOT\" --apply" >&2
+    return 0
+  fi
+  echo "   O kit não está neste repositório e não há kernel nesta máquina." >&2
+  echo "   Peça a quem lhe enviou o repositório para reenviar a pasta hooks/ completa." >&2
+}
 
 run_check() {
   NAME="$1"
@@ -92,7 +175,8 @@ run_check() {
       return 0
     fi
     echo "❌ [$NAME] check OBRIGATÓRIO ausente ($SRC)." >&2
-    echo "   Fail-closed: nunca pulamos um check em silêncio. Reinstale: leaf-init --apply" >&2
+    echo "   Fail-closed: nunca pulamos um check em silêncio." >&2
+    _como_reinstalar
     OVERALL=1
     return 1
   fi
@@ -106,7 +190,8 @@ echo "🔒 pre-commit EGOS-LEAF-KIT v2.1 — modo: $MODE"
 
 if [ ! -f "$MANIFEST" ]; then
   echo "❌ MANIFEST ausente ($MANIFEST) — kit incompleto/corrompido. Fail-closed." >&2
-  echo "   Reinstale: bun \$EGOS_KERNEL_PATH/scripts/leaf-init.ts <este-repo> --apply" >&2
+  echo "   Isto BLOQUEIA TODOS os commits deste repositório, não só os problemáticos." >&2
+  _como_reinstalar
   exit 1
 fi
 
