@@ -28,7 +28,24 @@ fi
 
 # Padrões de secret conhecidos — escaneia o BLOB STAGED de cada arquivo de código/texto
 # (não o working-tree).
-STAGED_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|py|sh|env|json)$' | grep -v '\.example$' | grep -v 'test' || true)
+# SECRET-SO-EM-CODIGO-001 (2026-08-15) — DOIS furos medidos ao provar este check num leaf real.
+#
+# 1. A lista de extensões não tinha `.md`. Uma chave `sk-ant-...` de alta entropia colada num
+#    arquivo Markdown passou com "clean ✅" — e doc é justamente onde a chave é colada (README
+#    com exemplo de config, nota de sessão, passo a passo). O padrão `sk-ant-` SEMPRE esteve na
+#    lista; o arquivo é que nunca era olhado. Formato nº1 do CLAUDE.md: o gate rodou, imprimiu e
+#    não barrou. Agora `.md .txt .yml .yaml .toml` entram.
+#
+# 2. `grep -v 'test'` excluía QUALQUER caminho contendo a substring "test" — e em português
+#    "teste" contém "test". `teste-producao.ts` ficava fora do escaneamento, calado. A exclusão
+#    existe por um motivo legítimo (fixture de teste carrega secret falso de propósito, e gate
+#    que grita em falso morre por override), mas o predicado tem que ser PRECISO: só pula
+#    diretório de teste declarado ou arquivo com sufixo de teste — nunca substring solta.
+#    Mesma família de "sentinela não pode colidir com o ruído".
+STAGED_CODE=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(ts|tsx|js|jsx|py|sh|env|json|md|txt|ya?ml|toml)$' \
+  | grep -v '\.example$' \
+  | grep -vE '(^|/)(tests?|__tests__|spec|fixtures?)/|(\.|_)(test|spec)\.[a-z]+$' || true)
 if [ -n "$STAGED_CODE" ]; then
   for pattern in 'sk-or-[a-zA-Z0-9_-]{20,}' 'sk-ant-[a-zA-Z0-9_-]{20,}' 'AIza[a-zA-Z0-9_-]{30,}' 'eyJhbGciOi[a-zA-Z0-9._-]{30,}' 'sbp_[a-zA-Z0-9]{20,}' 'ghp_[a-zA-Z0-9]{20,}' 'xoxb-[a-zA-Z0-9-]{10,}'; do
     for FILE in $STAGED_CODE; do
