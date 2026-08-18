@@ -3,7 +3,7 @@
 > ⚠️ **GERADO de `AGENTS.md` (bloco PROPAGATE-RULES) — NÃO EDITAR À MÃO.**
 > Regenerar: `bun scripts/gen-nucleo-comum.ts` · Conferir: `--check`
 > Fonte de autoria: as etiquetas `<!-- nucleo: ... -->` no `AGENTS.md`. Mude LÁ, nunca aqui.
-> Projeção de 2026-08-17.
+> Projeção de 2026-08-18.
 
 ## O que este arquivo é
 
