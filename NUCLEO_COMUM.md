@@ -14,7 +14,7 @@ Ela não descreve o sistema do Enio: descreve o padrão de prova que vale igual 
 com a infraestrutura DELE. Elas protegem ele, não você — herdá-las tornaria este documento mais
 longo e menos crível, falando de sistemas que você não tem. Ficaram lá, de propósito.
 
-**Medida desta projeção:** 21 regras viajam · 4 condicionais (desligadas) · 3 ficaram no kernel.
+**Medida desta projeção:** 21 regras viajam · 4 condicionais (desligadas) · 4 ficaram no kernel.
 
 ---
 ### 🏛️ §PILARES — Layer 0 do EGOS (SSOT canônico; corte Enio PCA-PILARES-001:a, 2026-07-13)
@@ -179,7 +179,6 @@ Canonical eval strategy: `docs/knowledge/AI_EVAL_STRATEGY.md` (being written —
 - **(b) R-ESCAPE-ESTAGIO-001 [=P3]:** gate que roda no `pre-commit` **não** lê `.git/COMMIT_EDITMSG` — ali o arquivo ainda tem a mensagem do commit **ANTERIOR**. Detecta no pre-commit (grava sinal em `$GIT_DIR`, não bloqueia) e **cobra no `commit-msg`**, onde `$1` é a mensagem real. Dois defeitos simétricos, ambos medidos: **(i)** o escape que o autor escreve agora não é visto — o gate bloqueia, manda escrever o marcador, ele escreve, e bloqueia de novo; **(ii)** o escape do commit anterior **ainda autoriza este**, em silêncio — pior, porque (i) faz barulho e (ii) não faz nenhum. O sinal é **consumido em todo caminho de saída, inclusive no bloqueio**: é isso que mata o vazamento. Instrução impressa que não funciona no estágio treina o `--no-verify`. Motor: `egos/scripts/lib/gate-msg-escape.sh` + `gate-msg-check.sh` (9 goldens).
 - **(c) R-UM-PORTADOR-001 [=P3/P5, 2 cortes Enio]:** a constituição se escreve **uma vez** em cada repositório. Quem carrega é o `AGENTS.md`; o `CLAUDE.md` **importa** com `@AGENTS.md` e guarda só o que é próprio dele. Exceção nomeada: repo **sem** `AGENTS.md` — ali o `CLAUDE.md` é o único portador e assim permanece (remover apagaria a regra, não a duplicação). Fato gerador: o propagador escrevia o mesmo bloco nos dois arquivos e **18 repos carregavam 55.168 bytes idênticos em duplicata** — 986 KB de boot na frota, sem que nada acusasse. O freio que faz durar é `adapter-skip` no `updateFileWithBlock`: sem ele o cron reinjetava o bloco no arquivo já migrado e a cura se desfazia sozinha (=R-AUTOHEAL-FONTE-001). Motor: `egos/scripts/leaf-adapter-migrate.ts` (dry-run por padrão). 10 goldens, 6 sobre o que o motor **recusa** fazer.
 
-<!-- 
 
 ---
 
