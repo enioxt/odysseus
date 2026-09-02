@@ -3,7 +3,7 @@
 > ⚠️ **GERADO de `AGENTS.md` (bloco PROPAGATE-RULES) — NÃO EDITAR À MÃO.**
 > Regenerar: `bun scripts/gen-nucleo-comum.ts` · Conferir: `--check`
 > Fonte de autoria: as etiquetas `<!-- nucleo: ... -->` no `AGENTS.md`. Mude LÁ, nunca aqui.
-> Projeção de 2026-09-01.
+> Projeção de 2026-09-02.
 
 ## O que este arquivo é
 
@@ -205,7 +205,7 @@ Canonical eval strategy: `docs/knowledge/AI_EVAL_STRATEGY.md` (being written —
 3. After 10+ turns or compaction: re-read TASKS.md + current file.
 4. Cost control: 3 retries fail on same error → STOP, flag `[BLOCKER]`.
 5. **Session checkpoint:** when pre-commit emits `[CHECKPOINT-NEEDED]` (turns≥10/commits≥15/elapsed≥90min), invoke `/checkpoint` (Hard Reset). Use `bun scripts/session-init.ts --status` to check. Never ignore [CHECKPOINT-NEEDED].
-6. **Concurrent windows on the same checkout → worktree from start, constitutional (not just suggestion).** `session-registry.ts check` detects another live session on the SAME checkout. If detected AND this session will write/commit AND its objective diverges from the others' → open with `claude --worktree <name>` BEFORE editing hotspots (TASKS.md/CLAUDE.md/AGENTS.md/.guarani). Exceptions (worktree cost > protection): single session · read-only/research mode · work in a separate repo · trivial single-file edit · work depending on `.env`/deploy-from-tree (worktree lacks `.env`, gitignored). Pre-commit ALREADY verifies and blocks a shared-index commit with 2+ live windows (`INDICE-COMPARTILHADO-001`, `.husky/pre-commit` §0.15) — that gate is the backstop; worktree is the cure. SSOT: `docs/governance/SWARM_COMMIT_POLICY.md §Multi-Window`.
+6. **Concurrent windows on the same checkout → worktree from start, constitutional (not just suggestion).** `session-registry.ts check` detects another live session on the SAME checkout. If detected AND this session will write/commit AND its objective diverges from the others' → open with `claude --worktree <name>` BEFORE editing hotspots (TASKS.md/CLAUDE.md/AGENTS.md/.guarani). Exceptions (worktree cost > protection): single session · read-only/research mode · work in a separate repo · trivial single-file edit · work depending on `.env`/deploy-from-tree (worktree lacks `.env`, gitignored). Pre-commit ALREADY verifies and blocks a shared-index commit with 2+ live windows (`INDICE-COMPARTILHADO-001`, `.husky/pre-commit` §0.15) — that gate is the backstop; worktree is the cure. SSOT: `docs/governance/SWARM_COMMIT_POLICY.md §Multi-Window`. **E a mesma janela coordena no máximo TRÊS projetos ativos (R-ARQUITETO-TRES-001, 1º corte Enio 2026-09-02):** projeto ativo = repo com job pendente/em andamento postado por esta sessão na fila; o 4º distinto é recusado em `scripts/fila.ts postar` (exit 3; escape só com `EGOS_ARQUITETO_OVERRIDE=1` + razão no ledger); teto em `EGOS_ARQUITETO_TETO`. Fato gerador: sessão de 02/09 com envelope 174/90 min e 21/15 commits em 4 frentes; `WIP≤2` em prosa desde a v6 não freou. Spec + goldens: `SWARM_COMMIT_POLICY.md §Arquiteto` · `fila.test.sh` g15a-k.
 
 
 </details>
