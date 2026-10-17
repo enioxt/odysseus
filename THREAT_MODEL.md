@@ -15,12 +15,12 @@ Odysseus is designed for **trusted users on a private network**, not public expo
 
 | Capability | Admin | Non-admin (default) |
 |---|---|---|
-| Chat with agent | ✓ | ✓ |
-| Browser tool | ✓ | ✓ |
-| Documents | ✓ | ✓ |
-| Research mode | ✓ | ✓ |
-| Image generation | ✓ | ✓ |
-| Memory management | ✓ | ✓ |
+| Chat with agent | ✓ | ✗ (grant per user) |
+| Browser tool | ✓ | ✗ (grant per user) |
+| Documents | ✓ | ✗ (grant per user) |
+| Research mode | ✓ | ✗ (grant per user) |
+| Image generation | ✓ | ✗ (grant per user) |
+| Memory management | ✓ | ✗ (grant per user) |
 | Shell / Python execution | ✓ | ✗ |
 | File read / write | ✓ | ✗ |
 | Email send / read | ✓ | ✗ |
